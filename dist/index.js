@@ -15,6 +15,8 @@ var __extends = (this && this.__extends) || (function () {
         return extendStatics(d, b);
     };
     return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
@@ -28,42 +30,62 @@ var reconnecting_websocket_1 = __importDefault(require("reconnecting-websocket")
 var event_emitter_es6_1 = __importDefault(require("event-emitter-es6"));
 var client_1 = __importDefault(require("sharedb/lib/client"));
 var bindings_1 = __importDefault(require("./bindings"));
+var util_1 = require("./util");
 var ShareDBMonaco = /** @class */ (function (_super) {
     __extends(ShareDBMonaco, _super);
     /**
      * ShareDBMonaco
      * @param {ShareDBMonacoOptions} opts - Options object
-     * @param {string} opts.id - ShareDB document ID
-     * @param {string} opts.namespace - ShareDB document namespace
+     * @param {object} opts.request - map of namespace -> array of doc ids
+     * @param {object}  opts.activeDoc - array of [namespace, doc id].
      * @param {string} opts.wsurl - URL for ShareDB Server API
      */
     function ShareDBMonaco(opts) {
         var _this = _super.call(this) || this;
+        _this.docs = {};
         // Parameter checks
-        if (!opts.id) {
-            throw new Error("'id' is required but not provided");
+        if (!opts.request) {
+            throw new Error("'request' is required but not provided");
         }
-        if (!opts.namespace) {
-            throw new Error("'namespace' is required but not provided");
+        if (!opts.activeDoc) {
+            throw new Error("'activeDoc' is required but not provided");
         }
         if (!opts.wsurl) {
             throw new Error("'wsurl' is required but not provided");
         }
+        if (opts.activeDoc.length !== 2) {
+            throw new Error("'activeDoc' format must be [namespace, id]");
+        }
+        var _a = opts.activeDoc, ns = _a[0], id = _a[1];
+        if (!(ns in opts.request) || opts.request[ns].indexOf(id) === -1) {
+            throw new Error("Provided active document is invalid");
+        }
+        var that = _this;
         _this.WS = new reconnecting_websocket_1.default(opts.wsurl);
-        // Get ShareDB Doc
+        // Get one or more ShareDB Doc's
         var connection = new client_1.default.Connection(_this.WS);
-        var doc = connection.get(opts.namespace, opts.id);
-        doc.subscribe(function (err) {
-            if (err)
-                throw err;
-            if (doc.type === null) {
-                throw new Error("ShareDB document uninitialized. Check if the id is correct and you have initialised the document on the server.");
-            }
-            // Document has been initialised, emit 'ready' event
-            _this.emit("ready");
+        var docs = Object.entries(opts.request).map(function (_a) {
+            var namespace = _a[0], ids = _a[1];
+            that.docs[namespace] = {};
+            return ids.map(function (id) {
+                var doc = connection.get(namespace, id);
+                that.docs[namespace][id] = doc;
+                return doc;
+            });
         });
-        _this.doc = doc;
-        _this.connection = connection;
+        var allDocs = [];
+        Object.values(docs).forEach(function (namespace) {
+            Object.values(namespace).forEach(function (doc) {
+                allDocs.push(doc);
+            });
+        });
+        Promise.all(allDocs.map(function (doc) { return util_1.promiseSubscribe(doc); })).then(function () {
+            // Documents have been initialised, emit 'ready' event
+            that.connection = connection;
+            that.activeDoc = that.docs[ns][id];
+            that.setActiveDoc(ns, id);
+            that.emit("ready");
+        });
         return _this;
     }
     // Attach editor to ShareDBMonaco
@@ -75,8 +97,8 @@ var ShareDBMonaco = /** @class */ (function (_super) {
         this.bindings = new bindings_1.default({
             monaco: monaco,
             path: sharePath,
-            doc: this.doc,
-            viewOnly: !!viewOnly
+            doc: this.activeDoc,
+            viewOnly: !!viewOnly,
         });
     };
     ShareDBMonaco.prototype.close = function () {
@@ -85,6 +107,20 @@ var ShareDBMonaco = /** @class */ (function (_super) {
         }
         this.connection.close();
         this.emit("close");
+    };
+    ShareDBMonaco.prototype.setActiveDoc = function (namespace, id) {
+        var _a;
+        if (!(namespace in this.docs)) {
+            throw new Error("No active namespace \"" + namespace + "\"");
+        }
+        var docs = this.docs[namespace];
+        if (!(id in docs)) {
+            throw new Error("No subscribed document with id \"" + id + "\" in namespace \"" + namespace + "\"");
+        }
+        (_a = this.bindings) === null || _a === void 0 ? void 0 : _a.setActiveDoc(docs[id]);
+    };
+    ShareDBMonaco.prototype.getConnection = function () {
+        return this.connection;
     };
     return ShareDBMonaco;
 }(event_emitter_es6_1.default));

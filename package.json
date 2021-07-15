@@ -19,13 +19,17 @@
   "homepage": "https://github.com/codecollab-io/sharedb-monaco#readme",
   "devDependencies": {
     "@types/event-emitter-es6": "^1.1.0",
+    "@types/events": "^3.0.0",
+    "@types/readable-stream": "^2.3.11",
     "@types/sharedb": "^1.0.10",
     "typescript": "^4.0.5"
   },
   "dependencies": {
     "event-emitter-es6": "^1.1.5",
+    "events": "^3.3.0",
     "monaco-editor": "^0.21.2",
     "reconnecting-websocket": "^4.4.0",
-    "sharedb": "^1.4.2"
+    "sharedb": "^1.4.2",
+    "stream": "0.0.2"
   }
 }

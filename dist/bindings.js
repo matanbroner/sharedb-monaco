@@ -23,24 +23,31 @@ var Bindings = /** @class */ (function () {
     }
     // Sets the monaco editor's value to the ShareDB document's value
     Bindings.prototype.setInitialValue = function () {
+        var _a, _b;
         this.suppress = true;
-        this.model.setValue(this.doc.data[this.path]);
-        this.lastValue = this.doc.data[this.path];
+        this.model.setValue((_a = this.doc) === null || _a === void 0 ? void 0 : _a.data[this.path]);
+        this.lastValue = (_b = this.doc) === null || _b === void 0 ? void 0 : _b.data[this.path];
         this.suppress = false;
     };
     // Listen for both monaco editor changes and ShareDB changes
     Bindings.prototype.listen = function () {
+        var _a;
         if (!this.viewOnly) {
             this.editor.onDidChangeModelContent(this.onLocalChange);
         }
-        this.doc.on('op', this.onRemoteChange);
+        (_a = this.doc) === null || _a === void 0 ? void 0 : _a.on('op', this.onRemoteChange);
     };
     // Stop listening for changes
     Bindings.prototype.unlisten = function () {
+        var _a;
         if (!this.viewOnly) {
             this.editor.onDidChangeModelContent(function () { });
         }
-        this.doc.on('op', this.onRemoteChange);
+        (_a = this.doc) === null || _a === void 0 ? void 0 : _a.on('op', this.onRemoteChange);
+    };
+    Bindings.prototype.setActiveDoc = function (doc) {
+        this.doc = doc;
+        this.setInitialValue();
     };
     // Transform monaco content change delta to ShareDB Operation.
     Bindings.prototype.deltaTransform = function (delta) {
@@ -122,6 +129,7 @@ var Bindings = /** @class */ (function () {
     // Handles local editor change events
     Bindings.prototype.onLocalChange = function (delta) {
         var _this = this;
+        var _a;
         if (this.suppress) {
             return;
         }
@@ -130,13 +138,14 @@ var Bindings = /** @class */ (function () {
             ops = ops.concat(this.deltaTransform(delta.changes[i]));
         }
         this.lastValue = this.model.getValue();
-        this.doc.submitOp(ops, { source: true }, function (err) {
+        (_a = this.doc) === null || _a === void 0 ? void 0 : _a.submitOp(ops, { source: true }, function (err) {
+            var _a, _b;
             if (err)
                 throw err;
-            if (_this.model.getValue() !== _this.doc.data[_this.path]) {
+            if (_this.model.getValue() !== ((_a = _this.doc) === null || _a === void 0 ? void 0 : _a.data[_this.path])) {
                 _this.suppress = true;
                 var cursor = _this.editor.getPosition();
-                _this.model.setValue(_this.doc.data[_this.path]);
+                _this.model.setValue((_b = _this.doc) === null || _b === void 0 ? void 0 : _b.data[_this.path]);
                 if (cursor) {
                     _this.editor.setPosition(cursor);
                 }
