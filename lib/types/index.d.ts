@@ -7,14 +7,16 @@ import { editor } from "monaco-editor";
 import sharedb from "sharedb/lib/client";
 
 export interface ShareDBMonacoOptions {
-    id: string;
-    namespace: string;
-    wsurl: string;
+  request: {
+    [key: string]: string[]
+  };
+  activeDoc: string[];
+  wsurl: string;
 }
 
 export interface BindingsOptions {
-    monaco: editor.ICodeEditor;
-    path: string;
-    doc: sharedb.Doc;
-    viewOnly: boolean;
+  monaco: editor.ICodeEditor;
+  path: string;
+  doc?: sharedb.Doc;
+  viewOnly: boolean;
 }

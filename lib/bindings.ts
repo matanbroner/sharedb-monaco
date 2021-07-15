@@ -14,7 +14,7 @@ class Bindings {
     private suppress: boolean;
     private editor: editor.ICodeEditor;
     private path: string;
-    private doc: sharedb.Doc;
+    private doc?: sharedb.Doc;
     private model: editor.ITextModel;
     private lastValue: string;
     private viewOnly: boolean;
@@ -39,21 +39,26 @@ class Bindings {
     // Sets the monaco editor's value to the ShareDB document's value
     setInitialValue() {
         this.suppress = true;
-        this.model.setValue(this.doc.data[this.path]);
-        this.lastValue = this.doc.data[this.path];
+        this.model.setValue(this.doc?.data[this.path]);
+        this.lastValue = this.doc?.data[this.path];
         this.suppress = false;
     }
 
     // Listen for both monaco editor changes and ShareDB changes
     listen() {
         if(!this.viewOnly) { this.editor.onDidChangeModelContent(this.onLocalChange); }
-        this.doc.on('op', this.onRemoteChange);
+        this.doc?.on('op', this.onRemoteChange);
     }
 
     // Stop listening for changes
     unlisten() {
         if(!this.viewOnly) { this.editor.onDidChangeModelContent(() => {}); }
-        this.doc.on('op', this.onRemoteChange);
+        this.doc?.on('op', this.onRemoteChange);
+    }
+
+    setActiveDoc(doc: sharedb.Doc){
+        this.doc = doc;
+        this.setInitialValue();
     }
 
     // Transform monaco content change delta to ShareDB Operation.
@@ -166,12 +171,12 @@ class Bindings {
 
         this.lastValue = this.model.getValue();
 
-        this.doc.submitOp(ops, { source: true }, (err) => {
+        this.doc?.submitOp(ops, { source: true }, (err) => {
             if(err) throw err;
-            if(this.model.getValue() !== this.doc.data[this.path]) {
+            if(this.model.getValue() !== this.doc?.data[this.path]) {
                 this.suppress = true;
                 let cursor = this.editor.getPosition();
-                this.model.setValue(this.doc.data[this.path]);
+                this.model.setValue(this.doc?.data[this.path]);
                 if(cursor) { this.editor.setPosition(cursor); }
                 this.suppress = false;
             }
